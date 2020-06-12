@@ -1,0 +1,42 @@
+#!/bin/sh
+MAGIC () {
+#!/bin/sh
+for clan in `cat /home/splunk/bin/clan_ids | cut -f1 -d','`
+	do
+	# curl -s "https://api.worldoftanks.eu/wot/clans/info/?application_id=cabfb627502b1629384b83fe80846204&clan_id=${clan}" | jq -r '.data[].members[] '> /opt/splunk/etc/apps/WorldOfTanks/reddit/clan_${clan}
+exit=5
+while [[ $exit -gt 0 ]]
+do
+	curl -s "https://api.worldoftanks.eu/wot/clans/info/?application_id=1266b28cbb37571a0b79d04fe6aa6136&clan_id=${clan}" | jq -r '.data[].members[] | "\(.account_id),\(.account_name),\(.role_i18n)"'> /home/splunk/bin/accountlist_${clan}.csv
+exit=$?
+echo exit = $exit
+done
+	sleep 1
+done
+
+for account_id in `cat /home/splunk/bin/accountlist_* | cut -f1 -d','`
+	do 
+	USER=`grep ${account_id} /home/splunk/bin/accountlist_* | cut -f2 -d','`
+	echo ${USER}
+exit=5
+while [[ $exit -gt 0 ]]
+do
+
+	curl -s "https://api.worldoftanks.eu/wot/tanks/stats/?application_id=1266b28cbb37571a0b79d04fe6aa6136&account_id=$account_id"  | jq '[.data[][] | {all: .all,tank_id,mark_of_mastery,max_xp,account_id,max_frags} ]'  > /opt/splunk/etc/apps/WorldOfTanks/reddit/vehicles/${USER}
+
+exit=$?
+echo exit = $exit
+done
+
+	sleep 1
+exit=5
+while [[ $exit -gt 0 ]]
+do
+	curl -s "https://api.worldoftanks.eu/wot/tanks/achievements/?application_id=1266b28cbb37571a0b79d04fe6aa6136&account_id=$account_id" | jq '[.data[][] | {achievements: .achievements,account_id,tank_id} ] ' > /opt/splunk/etc/apps/WorldOfTanks/reddit/achievements/${USER}
+exit=$?
+echo exit = $exit
+done
+	sleep 1
+done
+} 
+declare -f MAGIC
